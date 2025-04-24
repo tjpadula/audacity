@@ -71,6 +71,10 @@ if (OS_IS_MAC)
     SET(AU4_INSTALL_NAME  "Contents/Resources/")
     SET(AU4_SHARE_NAME    "audacity.app/")
     SET(AU4_FRAMEWORKS_NAME "Frameworks/")
+    
+    # IOS_CONFIG_BUG
+    SET(CMAKE_INSTALL_PREFIX "/Users/tom/Code/Audacity4Git/build/bin")
+    
 elseif (OS_IS_WIN)
     SET(AU4_INSTALL_NAME  "")
     SET(AU4_SHARE_NAME    "./")
