@@ -1,0 +1,296 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2821
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 Menlo-Regular;\f2\fnil\fcharset0 Menlo-Bold;
+\f3\fnil\fcharset0 .AppleSystemUIFontMonospaced-Regular;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue0;\red255\green255\blue255;
+\red155\green35\blue147;\red196\green26\blue22;\red28\green0\blue207;\red24\green26\blue30;\red244\green246\blue249;
+\red236\green244\blue251;\red17\green21\blue26;\red255\green255\blue255;\red31\green31\blue36;\red0\green0\blue0;
+\red255\green255\blue255;\red0\green0\blue0;\red255\green255\blue255;}
+{\*\expandedcolortbl;;\csgray\c0;\csgenericrgb\c0\c0\c0\c85000;\csgenericrgb\c100000\c100000\c100000;
+\csgenericrgb\c60759\c13753\c57628;\csgenericrgb\c77000\c10200\c8600;\csgenericrgb\c11000\c0\c81000;\cssrgb\c12157\c13725\c15686;\cssrgb\c96471\c97255\c98039;
+\cssrgb\c94118\c96471\c98824;\cssrgb\c8235\c10588\c13725;\csgenericrgb\c100000\c100000\c100000\c85000;\csgenericrgb\c12054\c12284\c14131;\cssrgb\c0\c1\c1;
+\cssrgb\c100000\c100000\c100000\c0;\cssrgb\c0\c0\c0;\cssrgb\c100000\c100000\c99985;}
+\margl1440\margr1440\vieww11480\viewh14640\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 Now that we have MuseScore 4.5 building from source, let\'92s give Audacity 4 a go. A4 is not even close to alpha, but it\'92s supposed to at least build.\
+\
+Same config as for MS:\
+\
+As of 12/2024:\
+OS: Sequoia 15.2\
+Xcode: 16.2\
+Mac mini M1 16GB\
+Qt 6.2.4\
+\
+====\
+\
+The initial A4 build outline is here:\
+\
+https://github.com/audacity/audacity/blob/master/BUILDING.md\
+\
+We will need to install, as before:\
+- brew\
+- wget\
+- git\
+- gh\
+- 7z/7-zip\
+- cmake\
+- Xcode command line tools\
+- Qt 6.2.4, with the same modules as for MS.\
+- The newer version of bash and its .bash_profile\
+\
+Presuming we did all that successfully, it\'92s time to get the A4 source.\
+\
+====\
+\
+We forked and cloned the A4 source to ~/Code/Audacity4.\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs22 \cf2 \CocoaLigature0 cd ~/Code\
+git clone https://github.com/tjpadula/audacity.git Audacity4\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs24 \'85and that blew up the same way as cloning MS did. We will skip all the noise until GitHub gets its act together and just get the zip.\
+\
+====\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs22 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 \CocoaLigature1 Does the buildscripts folder have a setup.sh for Mac? - Yes.\
+\
+The script expects 
+\f1 \cf3 \cb4 ENV_FILE 
+\f0 instead of
+\f1  
+\fs22 \cf2 \cb1 \CocoaLigature0 GITHUB_ENV.
+\f0\fs24 This string appears only in the setup.sh/setup.cmake for the three platforms, nowhere else, so what is it used for? OTOH, 
+\f1\fs22 GITHUB_ENV 
+\f0\fs24 appears in several other build files in MS. It doesn\'92t appear anywhere in A4, as expected, though GITHUB_WORKSPACE does\'85\
+\
+It still doesn\'92t check for what it needs.\
+It downloads its own copy of Qt, as before.\
+It makes its own build_tools folder and puts Qt, the symbol file, and the VST SDK there.\
+VST3_SDK_PATH is not defined.\
+It appears to try to get a symbol file for x86_64, not sure if that will cause issues for Apple Silicon.\cf0 \CocoaLigature1 \
+\
+So following setup.sh but doing it by hand, we first set up 
+\f1 \cf3 \cb4 ENV_FILE.
+\f0  This follows cmake\'92s internal environment variable syntax of ENV_xxxx. (Not sure why MuseScore does something different, maybe ENV_FILE isn\'92t paid attention to by this cmake build?) 
+\f1 \
+\
+\pard\tx593\pardeftab593\partightenfactor0
+\cf3 cd ~/Code/Audacity4\
+BUILD_TOOLS=$HOME/build_tools\
+ENV_FILE=$BUILD_TOOLS/environment.sh\
+mkdir -p $BUILD_TOOLS\
+rm -f $ENV_FILE\
+
+\f2\b \cf5 echo
+\f1\b0 \cf3  \cf6 "echo 'Setup build environment'"\cf3  >> $ENV_FILE\
+\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f0 \cf3 Fetch Qt:\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f1 \cf3 \
+
+\f2\b \cf5 export
+\f1\b0 \cf3  MACOSX_DEPLOYMENT_TARGET=\cf7 10.14\cf3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\fs22 \cf2 \cb1 \CocoaLigature0 rm -f '/usr/local/bin/2to3'\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\fs24 \cf3 \cb4 \CocoaLigature1 brew install ninja pkg-config\
+brew install cmake\
+QT_SHORT_VERSION=\cf7 6.2.4\cf3 \
+
+\f2\b \cf5 export
+\f1\b0 \cf3  QT_PATH=$BUILD_TOOLS/Qt/$QT_SHORT_VERSION/\
+\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f0 \cf3 This will take a while, like an hour. For whatever reason, s3.amazonaws.com feeds at about 100kB/sec  (because of Sequoia on the Mac mini over ethernet, not the server!):\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f1 \cf3 \
+wget -nv -O qt\cf7 .7\cf3 z https://s3.amazonaws.com/utils.musescore.org/Qt624_mac\cf7 .7\cf3 z\
+\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f0 \cf3 Unpacking Qt, note the spelling of 7zz:\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f1 \cf3 \
+mkdir -p $QT_PATH\
+\cf7 7\cf3 zz x -y qt\cf7 .7\cf3 z -o\'94$QT_PATH\'94\
+rm qt\cf7 .7\cf3 z\
+
+\f2\b \cf5 echo
+\f1\b0 \cf3  \cf6 "export QT_PATH=\cf3 $QT_PATH\cf6 "\cf3  >> $ENV_FILE\
+
+\f2\b \cf5 echo
+\f1\b0 \cf3  \cf6 "export PATH=\cf3 $PATH\cf6 :\cf3 $QT_PATH\cf6 /macos/bin"\cf3  >> $ENV_FILE\
+\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f0 \cf3 Symbols, again note spelling of 7zz:\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f1 \cf3 \
+wget -q --show-progress -O dump_syms\cf7 .7\cf3 z \cf6 "https://s3.amazonaws.com/utils.musescore.org/breakpad/macos/x86-64/dump_syms.7z"\cf3 \
+\cf7 7\cf3 zz x -y dump_syms\cf7 .7\cf3 z -o\cf6 "\cf3 $BUILD_TOOLS\cf6 /breakpad"\cf3 \
+\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f0 \cf3 And the VST SDK, there was a typo in the export line here as well:
+\f1 \
+\
+export VST3_SDK_PATH=$BUILD_TOOLS/vst\
+wget -q --show-progress -O vst_sdk\cf7 .7\cf3 z \cf6 "https://s3.amazonaws.com/utils.musescore.org/VST3_SDK_379.7z"\cf3 \
+\pard\tx593\pardeftab593\partightenfactor0
+\cf7 7\cf3 zz x -y vst_sdk\cf7 .7\cf3 z -o\cf6 "\cf3 $VST3_SDK_PATH\cf6 "\cf3 \
+
+\f2\b \cf5 echo
+\f1\b0 \cf3  \cf6 "export VST3_SDK_PATH=\cf3 $VST3_SDK_PATH\cf6 "\cf3  >> $ENV_FILE\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f0 \cf0 \cb1 \
+That seemed to work OK.\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf0 ====\
+\
+There does not appear to be a build.cmake for A4. \'97 building.md has the info. First the configuration (this only needs to be done once):\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs27\fsmilli13600 \cf8 \cb9 \expnd0\expndtw0\kerning0
+cmake -S . -B build/\
+\
+
+\f0\fs24 \'85 and it can\'92t find Qt, just like before. Somehow build_tools directory got its name changed to garbage. Changing it back and adding this path:\
+
+\f3\fs27\fsmilli13600 \
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f1\fs24 \cf6 \cb4 \kerning1\expnd0\expndtw0 export PATH=\cf3 $PATH\cf6 :\cf3 $QT_PATH/\cf6 macos/bin\
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs27\fsmilli13600 \cf8 \cb9 \expnd0\expndtw0\kerning0
+cmake -S . -B build/\
+\
+
+\f0\fs24 \'85and that works better. Now the actual build:\
+
+\f3\fs27\fsmilli13600 \
+\pard\pardeftab720\partightenfactor0
+\cf10 \cb11 cmake --build build/ \
+\pard\pardeftab720\partightenfactor0
+\cf8 \cb9 \
+
+\f0\fs24 This grinds for a while. It looks like it\'92s only building one file at a time, with no parallel build. That\'92s pretty old-school.\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs27\fsmilli13600 \cf10 \cb11 cmake --install build/ \
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf8 \cb9 \
+This errs out trying to write audacity.app to /usr/local. We ought to build it within the Audacity4/build/bin folder instead. We modified SetupConfigure.cmake to add this within the IF (OS_IS_MAC) block:\
+\
+\pard\tx593\pardeftab593\pardirnatural\partightenfactor0
+
+\f1 \cf12 \cb13 \kerning1\expnd0\expndtw0     SET(CMAKE_INSTALL_PREFIX "/Users/tom/Code/Audacity4/build/bin")\
+\pard\pardeftab720\partightenfactor0
+
+\f0 \cf8 \cb9 \expnd0\expndtw0\kerning0
+\
+Yes, this is a hack. If it works, we can figure out how to get the actual build base directory and specify build/bin from there. It did build! - We might have figured this out in a less-hacky way.\
+\
+\'85but it crashed on launch. Crash report is in A4/crash_report1.txt. It looks like we\'92re missing something we should have linked in:\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs22 \cf8 Termination Reason:    Namespace DYLD, Code 1 Library missing\
+Library not loaded: /lib/libexpat.1.dylib\
+Referenced from: <7D61A1B3-B2BE-364A-9D5F-3F1B62FB5DCD> /Users/USER/*/audacity.app/Contents/Frameworks/libwx_baseu_xml-3.1.dylib\
+Reason: tried: '/lib/libexpat.1.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/lib/libexpat.1.dylib' (no such file), '/lib/libexpat.1.dylib' (no such file)\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf8 \
+The crash report indicates that libwx_baseu_xml-3.1.dylib is trying to link with /lib/libexpat.1.dylib. There is no /lib on a Mac, and everything else in that library (viewed with otool -L)  is either a proper system library or an @rpath, which indicates it should be found in the same directory. Let\'92s try to change where it\'92s looking in the lib in the executable:\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1 \cf14 \cb15 \kerning1\expnd0\expndtw0 install_name_tool -change 
+\fs22 \cf2 \cb1 \CocoaLigature0 /lib/libexpat.1.dylib @rpath/libexpat.1.dylib /Users/tom/Code/Audacity4/build/bin/audacity.app/Contents/Frameworks/libwx_baseu_xml-3.1.dylib
+\fs24 \cf6 \cb4 \CocoaLigature1 \
+\
+
+\f0 \cf16 More on dylibs here:\
+
+\f1 \
+
+\fs22 https://stackoverflow.com/questions/4677044/how-to-use-dylib-in-mac-os-x-c\
+
+\fs24 \cf6 \
+
+\f0 \cf14 \cb17 That gave us the @rpath we should have (checked again with otool -L), but launching now blows up in a different way. Crash report is crash_report2.txt. It seems to be looking in the right place, but insists that libexpat.1.dylib is \'91not a mach-o file\'92. otool -L says the same thing: \'91is not an object file\'92.\
+\
+
+\f1\fs22 Library not loaded: @rpath/libexpat.1.dylib\
+Referenced from: <7D61A1B3-B2BE-364A-9D5F-3F1B62FB5DCD> /Users/USER/*/audacity.app/Contents/Frameworks/libwx_baseu_xml-3.1.dylib\
+Reason: tried: '/Users/tom/build_tools/Qt/6.2.4/macos/lib/libexpat.1.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/Users/tom/build_tools/Qt/6.2.4/macos/lib/libexpat.1.dylib' (no such file), '/Users/tom/Code/Audacity4/build/bin/audacity.app/Contents/MacOS/../Frameworks/libexpat.1.dylib' (not a mach-o file), '/Users/tom/build_tools/Qt/6.2.4/macos/lib/libexpat.1.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/Users/tom/build_tools/Qt/6.2.4/macos/lib/libexpat.1.dylib' (no such file), '/Users/tom/Code/Audacity4/build/bin/audacity.app/Contents/MacOS/../Frameworks/libexpat.1.dylib' (not a mach-o file)\
+\
+
+\f0\fs24 Hang on \'97 otool -L on 
+\f1\fs22 \cf2 \cb1 \CocoaLigature0 libexpat.1.8.10.dylib
+\f0\fs24 \cf14 \cb17 \CocoaLigature1  itself gives proper results, not an error. Let\'92s delete the alias in the Frameworks folder and create a proper symbolic link.\
+\
+
+\f1\fs22 pushd build/bin/audacity.app/Contents/Frameworks/\
+rm -f \cf2 \cb1 \CocoaLigature0 libexpat.1.dylib\cf14 \cb17 \CocoaLigature1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 \cb1 \CocoaLigature0 ln -s libexpat.1.8.10.dylib libexpat.1.dylib\
+popd\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs24 This results in otool -L properly recognizing libexpat.1.dylib. Cross your fingers\'85\cf14 \cb17 \CocoaLigature1 \
+\pard\pardeftab720\partightenfactor0
+\cf14 \
+And it launches! The opening dialog thinks it\'92s MuseScore, but the app itself is properly named.\
+\
+So probably the proper way to fix the dylib problem is to fix the path in the dependencies, A4/_deps/wxwidgets/lib:\
+\
+
+\f1 \cb15 install_name_tool -change 
+\fs22 \cf2 \cb1 \CocoaLigature0 /lib/libexpat.1.dylib @rpath/libexpat.1.dylib _deps/wxwidgets/lib/libwx_baseu_xml-3.1.dylib\
+
+\f0\fs24 \cf14 \cb17 \CocoaLigature1 \
+Building from here, we may still have a missing or broken symbolic link in the built application\'92s Frameworks folder even after this fix. But at least we have a path forward.\
+\
+====\
+\
+\pard\pardeftab720\partightenfactor0
+\cf14 April 24, 2025\
+\
+Our story continues...\
+\pard\pardeftab720\partightenfactor0
+\cf14 \
+We pulled our branch of A4 up to current and did a proper checkout into Audacity4Git:\
+\
+
+\f1 cd ~/Code\
+git clone https://github.com/tjpadula/audacity.git Audacity4Git\
+cd Audacity4Git\
+git switch iOS\
+\
+\
+}
