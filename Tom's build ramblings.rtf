@@ -4,11 +4,13 @@
 {\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue0;\red255\green255\blue255;
 \red155\green35\blue147;\red196\green26\blue22;\red28\green0\blue207;\red24\green26\blue30;\red244\green246\blue249;
 \red236\green244\blue251;\red17\green21\blue26;\red255\green255\blue255;\red31\green31\blue36;\red0\green0\blue0;
-\red255\green255\blue255;\red0\green0\blue0;\red255\green255\blue255;}
+\red255\green255\blue255;\red0\green0\blue0;\red255\green255\blue255;\red0\green0\blue0;\red15\green104\blue160;
+}
 {\*\expandedcolortbl;;\csgray\c0;\csgenericrgb\c0\c0\c0\c85000;\csgenericrgb\c100000\c100000\c100000;
 \csgenericrgb\c60759\c13753\c57628;\csgenericrgb\c77000\c10200\c8600;\csgenericrgb\c11000\c0\c81000;\cssrgb\c12157\c13725\c15686;\cssrgb\c96471\c97255\c98039;
 \cssrgb\c94118\c96471\c98824;\cssrgb\c8235\c10588\c13725;\csgenericrgb\c100000\c100000\c100000\c85000;\csgenericrgb\c12054\c12284\c14131;\cssrgb\c0\c1\c1;
-\cssrgb\c100000\c100000\c100000\c0;\cssrgb\c0\c0\c0;\cssrgb\c100000\c100000\c99985;}
+\cssrgb\c100000\c100000\c100000\c0;\cssrgb\c0\c0\c0;\cssrgb\c100000\c100000\c99985;\csgray\c0\c0;\csgenericrgb\c5882\c40784\c62745;
+}
 \margl1440\margr1440\vieww11480\viewh14640\viewkind0
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -278,19 +280,127 @@ Building from here, we may still have a missing or broken symbolic link in the b
 \
 ====\
 \
-\pard\pardeftab720\partightenfactor0
-\cf14 April 24, 2025\
+April 24, 2025\
 \
-Our story continues...\
-\pard\pardeftab720\partightenfactor0
-\cf14 \
+Our story continues. Start by building A4 for the Mac again with current source.\
+\
 We pulled our branch of A4 up to current and did a proper checkout into Audacity4Git:\
 \
+\pard\pardeftab720\partightenfactor0
 
-\f1 cd ~/Code\
+\f1 \cf14 \cb17 cd ~/Code\
 git clone https://github.com/tjpadula/audacity.git Audacity4Git\
 cd Audacity4Git\
 git switch iOS\
 \
+\pard\pardeftab720\partightenfactor0
+
+\f0 \cf14 \cb17 And that succeeded without running into the fetch-pack error during the download. \
 \
+Add this to SetupConfigure.cmake in the Mac section:\
+\
+\pard\tx593\pardeftab593\pardirnatural\partightenfactor0
+
+\f1 \cf16 \cb18 SET(CMAKE_INSTALL_PREFIX "/Users/tom/Code/Audacity4Git/build/bin")
+\f0 \cf14 \cb17 \
+\pard\pardeftab720\partightenfactor0
+\cf14 \
+So the Qt parts that we installed in ~/build_tools/Qt/6.2.4/mac are dual-architecture mac libraries (non-debug?) of the various Qt modules. We may be able to make A4 link with our locally built qt6_complete versions. For now, we will just run using the same tool installs as before in order to get to a running A4 for Mac.\
+\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f1 \cf3 \cb4 cd ~/Code/Audacity4Git\
+BUILD_TOOLS=$HOME/build_tools\
+ENV_FILE=$BUILD_TOOLS/environment.sh\
+mkdir -p $BUILD_TOOLS\
+rm -f $ENV_FILE\
+
+\f2\b \cf5 echo
+\f1\b0 \cf3  \cf6 "echo 'Setup build environment'"\cf3  >> $ENV_FILE\
+\pard\pardeftab720\partightenfactor0
+
+\f0 \cf14 \cb17 \
+We skip the Qt fetch, the symbols fetch, and the VST SDK fetch since we already have them. But we will need some declarations:\
+\
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f2\b \cf5 \cb4 export
+\f1\b0 \cf3  MACOSX_DEPLOYMENT_TARGET=\cf7 10.14\cf3 \
+QT_SHORT_VERSION=\cf7 6.2.4\cf3 \
+
+\f2\b \cf5 export
+\f1\b0 \cf3  QT_PATH=$BUILD_TOOLS/Qt/$QT_SHORT_VERSION/\
+\pard\pardeftab720\partightenfactor0
+
+\f0 \cf14 \cb17 \
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f1 \cf3 \cb4 mkdir -p $QT_PATH\
+
+\f2\b \cf5 echo
+\f1\b0 \cf3  \cf6 "export QT_PATH=\cf3 $QT_PATH\cf6 "\cf3  >> $ENV_FILE\
+
+\f2\b \cf5 echo
+\f1\b0 \cf3  \cf6 "export PATH=\cf3 $PATH\cf6 :\cf3 $QT_PATH\cf6 /macos/bin"\cf3  >> $ENV_FILE\
+\pard\pardeftab720\partightenfactor0
+
+\f0 \cf14 \cb17 \
+\pard\tx593\pardeftab593\partightenfactor0
+
+\f1 \cf6 \cb4 export PATH=\cf3 $PATH\cf6 :\cf3 $QT_PATH/\cf6 macos/bin\
+\
+
+\f0 \cf16 \cb18 First the one-shot configure step, fingers crossed:\
+
+\f1 \cf6 \cb4 \
+\pard\pardeftab720\partightenfactor0
+
+\f3 \cf16 \cb18 \expnd0\expndtw0\kerning0
+cmake -S . -B build/\
+\pard\pardeftab720\partightenfactor0
+
+\f0 \cf14 \cb17 \kerning1\expnd0\expndtw0 \
+Results! Note the build location, we will need to create subdirs for Mac, simulators, and device. This is set up in \cf8 \cb9 \expnd0\expndtw0\kerning0
+SetupConfigure.cmake\cf14 \cb17 \kerning1\expnd0\expndtw0 :\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs22 \cf2 \cb1 \CocoaLigature0 -- Generating done (1.3s)\
+-- Build files have been written to: /Users/tom/Code/Audacity4Git/build\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf14 \cb17 \CocoaLigature1 \
+And the build itself:\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f3 \cf16 \cb18 \expnd0\expndtw0\kerning0
+cmake --build build/ --parallel 10\
+cmake --install build/ \
+
+\f0 \cf14 \cb17 \kerning1\expnd0\expndtw0 \
+\pard\pardeftab720\partightenfactor0
+\cf14 And launching crashed in std::stoi(), called from muse::Val::toInt(). But at least the dylib paths seem to be set up correctly now, since we crashed in A4 code. It complained about not being able to find some source files, so maybe there is a bad value being passed in this method. The files were configs/languages.cfg and configs/ui.cfg - there is no configs folder in the Mac resources, we copied all of MuseScoreGit/src/app/configs into the built A4.app in Resources -- no help there.\
+\
+Debugging from Xcode, need to wait for app to launch and do it manually, there is something odd in the command line that trips A4. Looks like the string is empty, nobody checked for that.\
+\
+Turns out that since we are running on a Mac mini with no microphone, there is no input hardware and so A4 doesn't know what to do. It will crash launching on such a device (which tells us something about the overnight test machines). Even though it is an audio app, crashing on launch on an entire class of devices is unacceptable. We'll fix that as a courtesy. It's in val.cpp from the MSS framework, need to figure out how that gets brought in to _deps and built, since changing the _deps version and rebuilding fixed the problem.\
+\
+Wild - screen sharing under Sequoia finally sends audio.\
+\
+Hee hee: Autocomplete saves our butts: "
+\f1 \cf19 \cb4 wxToStdSting()
+\f0 \cf14 \cb17 " is used in a dozen files, perhaps it should be "wxToStdString()" instead?\
+\
+Anyway, there are plenty of places in the code that still make use of things like wxStrings. This isn't ready to try to push to iOS.\
+\
+To do: Make a build.cmake that automates the build process, like MSS has.\
+\
+====\
+\
+Some thoughts:\
+\
+We could check the extent that A4 still uses wxWidgets using some scripts. Say we recursively go down the source directories, scanning .cpp files for whole-word expressions that begin with wx. Then take the following symbol and sort a table by occurrence.\
+\
+If we want to try making adapter classes for things like wxString, we should consider doing so only after seeing what functionality is actually in use. OTOH, if the A3 code makes clever use of things like iterators, this may not be practical. But if it looks like it might be, then we can use the occurrence table to decide which functionality needs to be built in to an adapter class and which functionality can be replaced by hand.\
 }
